@@ -11,9 +11,8 @@ class CPU:
         self.reg = [0] * 8
         self.running = True
         self.pc = 0
-        # self.SP = 0xF4
+        self.fl = 0b00000000
         self.reg[7] = 0xF4
-        self.FL = 0b00000000
         self.LDI = 0b10000010
         self.PRN = 0b01000111
         self.HLT = 0b00000001
@@ -82,29 +81,27 @@ class CPU:
         """ALU operations."""
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b]
         #elif op == "SUB": etc
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
         # handles CMP
         elif op == "CMP":
-            # FL = 00000LGE
-            print("REG A:", self.reg[reg_a])
-            print("REG B:", self.reg[reg_b])
+            # fl = 00000LGE
+            # print("REG A:", self.reg[reg_a])
+            # print("REG B:", self.reg[reg_b])
             a = self.reg[reg_a]
             b = self.reg[reg_b]
             if a == b:
             # Equal = a == b
-                print("equal")
-                self.FL = 0b00000001
+                self.fl = 0b00000001
             elif a > b:
             # Greater = a > b
-                print("greater than")
-
-                self.FL = 0b00000010
+                self.fl = 0b00000010
             else:
             # Less = a < b
-                print("less than")
-                self.FL = 0b00000100
+                self.fl = 0b00000100
             
         else:
             raise Exception("Unsupported ALU operation")
@@ -117,7 +114,7 @@ class CPU:
 
         print(f"TRACE: %02X | RAM: %02X %02X %02X |" % (
             self.pc,
-            #self.fl,
+            self.fl,
             #self.ie,
             self.ram_read(self.pc),
             self.ram_read(self.pc + 1),
@@ -151,7 +148,7 @@ class CPU:
 
         address = self.ram_read(self.pc + 1)
 
-        print("PRINTING: ",self.reg[address])
+        print(self.reg[address])
 
         self.pc += 1
 
@@ -181,14 +178,37 @@ class CPU:
         self.alu("CMP", registerA, registerB)
 
         self.pc += 2
-        pass
         
     def handle_JEQ(self):
-
-        pass
+        # jump if equal flag is set to true
+        # jump to address stored in givin register
+        if self.fl == 0b1:
+            # get register_address from ram
+            register_address = self.ram_read(self.pc + 1)
+            # get new pc from register
+            new_pc = self.reg[register_address]
+            # set pc to new address
+            # has to be decremented since run fuction add one
+            self.pc = new_pc - 1
+        else:
+            # increment pc to skip register address
+            self.pc += 1
 
     def handle_JNE(self):
-        pass
+        # if "E" flag is false jump to address stored in given register
+        if self.fl != 0b1:
+            # if it was less or eqal this would fail there for can not be equal
+            # get register_address from ram
+            register_address = self.ram_read(self.pc + 1)
+            # get new pc from register
+            new_pc = self.reg[register_address]
+            # set pc to new address
+            # has to be decremented since run fuction add one
+            self.pc = new_pc - 1
+
+        else:
+            self.pc += 1
+
     def handle_PUSH(self):
         self.reg[7] -= 1
 
@@ -272,7 +292,7 @@ class CPU:
 
                 self.branchtable[command]()
             else:
-                print(f"Error:{command} not Found at PC:{self.pc}")
+                print(f"Error: {bin(command)} not Found at pc:{self.pc}")
             
 
             self.pc += 1
